@@ -4,11 +4,12 @@ from neuron import Neuron
 
 class Column(BaseElement):
 
-    def __init__(self, cortex, parent, n_children):
-        super(Column, self).__init__(cortex, parent, n_children)
+    NEURONS = 10
 
+    def __init__(self, cortex, parent):
+        super(Column, self).__init__(cortex, parent)
         self.set_idx()
 
-        for i in range(n_children):
-            neuron = Neuron(cortex, parent=self, n_children=100)
+        for i in range(self.NEURONS):
+            neuron = Neuron(cortex, parent=self)
             self.children.append(neuron)

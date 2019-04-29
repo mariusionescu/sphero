@@ -1,16 +1,18 @@
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 
 class BaseElement(object):
 
-    def __init__(self, cortex, parent, n_children):
+    def __init__(self, cortex=None, parent=None):
         self.idx = None
         self.cortex = cortex
         self.parent = parent
-        self.n_children = n_children
         self.children = []
         self.links = {}
+        self.back_links = []
+
+    def get_neuron(self, idx):
+        return self.cortex.map[idx]
 
     @property
     def next_child_id(self):
