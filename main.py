@@ -61,11 +61,11 @@ async def main():
         digits.images[32].flatten(),
     ]
 
-    # for _ in range(100):
-    #     for array in n1:
-    #         await array_sensor.send(array)
+    for _ in range(10):
+        for array in n1:
+            await array_sensor.send(array)
 
-    await array_sensor.send(n1[1])
+    # await array_sensor.send(n1[1])
 
     logging.info("[FIRE|QUEUE] start consuming firing queue")
     while not cortex.queue.empty():

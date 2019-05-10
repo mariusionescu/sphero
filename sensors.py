@@ -52,4 +52,4 @@ class Array(BaseSensor):
                 neuron_idx = self.links[i]
                 neuron = self.cortex.map[neuron_idx]
                 logging.info("[SENSOR] firing %s -> %s", i, neuron_idx)
-                await neuron.fire(remote_idx=i, strength=None, neuronal=False)
+                await neuron.fire(remote_idx=i, strength=0.9)

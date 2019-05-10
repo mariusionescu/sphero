@@ -5,74 +5,118 @@ import random
 
 class Neuron(BaseElement):
 
-    LEARNING_RATE = 0.01
-    FORGET_RATE = 0.1
-    CHARGE_LOSS_RATIO = 0.2
-    CHARGE_ACTIVATION_THRESHOLD = 0.5
+    LEARNING_RATE = 0.1
+    FORWARD_LOSS_RATE = 0.3
+    PASSIVE_LOSS_RATE = 0.2
     FORWARD_ACTIVATION_THRESHOLD = 0.4
+    PASSIVE_ACTIVATION_THRESHOLD = 0.3
+    PASSIVE_ACTIVATIONS = 2
 
     def __init__(self, cortex, parent):
         super(Neuron, self).__init__(cortex, parent)
-        self.charge = 0.0
+
+        self.local_links = {}
+        self.remote_links = {}
+        self.forward_links = {}
+
+        self.back_local_links = {}
+        self.back_remote_links = {}
+        self.back_forward_links = {}
+
+        self.link_types = {
+            'local': self.local_links,
+            'remote': self.remote_links,
+            'forward': self.forward_links
+        }
+
+        self.back_link_types = {
+            'local': self.back_local_links,
+            'remote': self.back_remote_links,
+            'forward': self.back_forward_links
+        }
+
         self.set_idx()
 
-    def backward_optimization(self, idx, learning_rate):
-        strength = self.links[idx]
+    def backward_optimization(self, idx, learning_rate, link_type):
+        links = self.link_types[link_type]
+
+        strength = links[idx]
+
         if learning_rate < 0:
             new_strength = max(0.0, strength + learning_rate)
-            self.links[idx] = new_strength
-            logging.debug("[BACKWARD|FORGET] adjusted link %s -> %s (%s)",
-                          self.idx, idx, self.links[idx])
+            links[idx] = new_strength
+            logging.debug("[BACKWARD|FORGET] adjusted link %s -> %s (%.2f)",
+                          self.idx, idx, links[idx])
         else:
             new_strength = min(0.99, strength + learning_rate)
-            self.links[idx] = new_strength
-            logging.info("[BACKWARD|LEARNING] adjusted link %s -> %s (%s)",
-                         self.idx, idx, self.links[idx])
+            links[idx] = new_strength
+            logging.debug("[BACKWARD|LEARNING] adjusted link %s -> %s (%.2f)",
+                          self.idx, idx, links[idx])
 
-    async def fire(self, strength=0.0, remote_idx=None, neuronal=True):
+    def fire_next(self, strength=0.0, remote_idx=None, link_type='local'):
 
-        # if self.charge < self.ACTIVATION_THRESHOLD:
-        self.charge = min(self.charge + strength * self.CHARGE_LOSS_RATIO, 0.99)
+        if strength > self.FORWARD_ACTIVATION_THRESHOLD:
+            self.parent.parent.activated_neurons.add(self.idx)
 
-        logging.info("[NEURON|CHARGE] %s -- new charge %s", self.idx, self.charge)
+            neuron = self.get_neuron(remote_idx)
 
-        charge_fire = False
+            new_strength = max(0.0, strength - self.FORWARD_LOSS_RATE)
 
-        if self.charge > self.CHARGE_ACTIVATION_THRESHOLD:
-            charge_fire = True
+            future = neuron.fire(strength=new_strength, remote_idx=self.idx, link_type=link_type)
+            logging.debug("[FUTURE|ACTIVE] queueing %s -> %s (%.2f)",
+                          self.idx, remote_idx, new_strength)
+            self.cortex.queue.put(future)
 
-        for neuron_idx, forward_strength in self.links.items():
+        if strength > self.PASSIVE_ACTIVATION_THRESHOLD:
 
-            if forward_strength > self.FORWARD_ACTIVATION_THRESHOLD:
-                self.parent.parent.activated_neurons.add(self.idx)
+            self.parent.parent.activated_neurons.add(self.idx)
 
-                neuron = self.get_neuron(neuron_idx)
+            neuron = self.get_neuron(remote_idx)
 
-                new_strength = max(0.0, forward_strength - self.FORGET_RATE)
+            new_strength = max(0.0, strength - self.PASSIVE_LOSS_RATE)
 
-                future = neuron.fire(strength=new_strength, remote_idx=self.idx)
-                logging.info("[FUTURE] queueing %s -> %s (%s)", self.idx, neuron_idx, new_strength)
-                self.cortex.queue.put(future)
+            future = neuron.fire(strength=new_strength, remote_idx=self.idx, link_type=link_type)
+            logging.debug("[FUTURE|PASSIVE] queueing %s -> %s (%.2f)",
+                          self.idx, remote_idx, new_strength)
+            self.cortex.queue.put(future)
 
-            elif self.charge > self.CHARGE_ACTIVATION_THRESHOLD:
-                neuron = self.get_neuron(neuron_idx)
+    async def fire(self, strength=0.0, remote_idx=None, link_type='local'):
 
-                new_charge = max(0.0, strength * (1 - self.CHARGE_LOSS_RATIO))
+        logging.info("[FIRE|RECEIVING] %s -> %s", self.idx, strength)
 
-                future = neuron.fire(strength=new_charge, remote_idx=self.idx)
-                logging.info("[FUTURE] queueing %s -> %s (%s)", self.idx, neuron_idx, new_charge)
-                self.cortex.queue.put(future)
+        if type(remote_idx) is tuple:
+            links = self.link_types[link_type]
+            links[remote_idx] = strength
 
-        if charge_fire:
-            self.charge = 0.0
+        for neuron_idx, next_strength in self.local_links.items():
+            next_strength = max(next_strength, strength)
+            self.fire_next(strength=next_strength, remote_idx=neuron_idx, link_type='local')
+            for prev_neuron_idx, strength in self.back_local_links.items():
+                if type(prev_neuron_idx) is not tuple:
+                    continue
+                if strength > 0.0 and neuron_idx != remote_idx:
+                    neuron = self.get_neuron(prev_neuron_idx)
+                    neuron.backward_optimization(self.idx, self.LEARNING_RATE, 'local')
 
-        if not charge_fire and neuronal and remote_idx:
-            for neuron_idx in self.back_links:
-                neuron = self.get_neuron(neuron_idx)
-                if neuron.idx == remote_idx:
-                    neuron.backward_optimization(self.idx, self.LEARNING_RATE)
-                else:
-                    neuron.backward_optimization(self.idx, -self.FORGET_RATE)
+        for neuron_idx, next_strength in self.remote_links.items():
+            next_strength = max(next_strength, strength)
+            self.fire_next(strength=next_strength, remote_idx=neuron_idx, link_type='remote')
+            for prev_neuron_idx, strength in self.back_remote_links.items():
+                if type(prev_neuron_idx) is not tuple:
+                    continue
+                if strength > 0.0 and neuron_idx != remote_idx:
+                    neuron = self.get_neuron(prev_neuron_idx)
+                    neuron.backward_optimization(self.idx, self.LEARNING_RATE, 'remote')
+
+        for neuron_idx, next_strength in self.forward_links.items():
+            next_strength = max(next_strength, strength)
+            self.fire_next(strength=next_strength, remote_idx=neuron_idx, link_type='forward')
+            for prev_neuron_idx, strength in self.back_forward_links.items():
+                if type(prev_neuron_idx) is not tuple:
+                    continue
+                if strength > 0.0 and neuron_idx != remote_idx:
+                    neuron = self.get_neuron(prev_neuron_idx)
+                    neuron.backward_optimization(self.idx, self.LEARNING_RATE, 'forward')
 
     def predict(self):
         pass
@@ -97,35 +141,37 @@ class Neuron(BaseElement):
                 forward_connections += 1
         logging.info("[NEURON %s] initialized %s FORWARD_SYNAPSES", self.idx, forward_connections)
 
-    def try_connection(self, remote_idx):
+    def try_connection(self, remote_idx, link_type):
         if (
                 remote_idx != self.idx and
-                remote_idx not in self.links and
-                remote_idx not in self.back_links
+                remote_idx not in self.local_links and
+                remote_idx not in self.remote_links and
+                remote_idx not in self.forward_links
         ):
-            self.back_links.append(remote_idx)
+            links = self.link_types[link_type]
+            links[remote_idx] = 0.0
             return self.idx
         else:
             logging.info("[NEURON %s] already has a connection to %s", self.idx, remote_idx)
 
     def local_connect(self):
         remote_neuron = random.choice(self.parent.children)
-        remote_idx = remote_neuron.try_connection(self.idx)
+        remote_idx = remote_neuron.try_connection(self.idx, 'local')
 
         if remote_idx:
             logging.info("[CONNECTION|LOCAL] %s -> %s", self.idx, remote_idx)
-            self.links[remote_idx] = 0.0
+            self.local_links[remote_idx] = 0.0
             return remote_idx
 
     def remote_connect(self):
         remote_column = random.choice(self.parent.parent.children)
         remote_neuron = random.choice(remote_column.children)
 
-        remote_idx = remote_neuron.try_connection(self.idx)
+        remote_idx = remote_neuron.try_connection(self.idx, 'remote')
 
         if remote_idx:
             logging.info("[CONNECTION|REMOTE] %s -> %s", self.idx, remote_idx)
-            self.links[remote_idx] = 0.0
+            self.remote_links[remote_idx] = 0.0
             return remote_idx
 
     def forward_connect(self):
@@ -140,9 +186,9 @@ class Neuron(BaseElement):
             remote_column = random.choice(next_layer.children)
             remote_neuron = random.choice(remote_column.children)
 
-            remote_idx = remote_neuron.try_connection(self.idx)
+            remote_idx = remote_neuron.try_connection(self.idx, 'forward')
 
             if remote_idx:
                 logging.info("[CONNECTION|FORWARD] %s -> %s", self.idx, remote_idx)
-                self.links[remote_idx] = 0.0
+                self.forward_links[remote_idx] = 0.0
                 return remote_idx

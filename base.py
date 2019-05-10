@@ -8,8 +8,6 @@ class BaseElement(object):
         self.cortex = cortex
         self.parent = parent
         self.children = []
-        self.links = {}
-        self.back_links = []
 
     def get_neuron(self, idx):
         return self.cortex.map[idx]
