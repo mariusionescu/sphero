@@ -9,8 +9,9 @@ import numpy as np
 from tensorflow.keras.datasets import mnist
 from matplotlib import pyplot as plt
 from skimage.filters import threshold_mean
+from skimage.transform import resize
 
-import network
+from hebb import HebbianNetwork
 
 
 # Utils
@@ -45,45 +46,53 @@ def plot(data, test, predicted, figsize=(3, 3)):
 
 
 def pre_processing(img):
+    img = resize(img, (20, 20))
     w, h = img.shape
-    # Threshold
-    thresh = threshold_mean(img)
-    binary = img > thresh
-    shift = 2 * (binary * 1) - 1  # Boolean to int
 
     # Reshape
-    flatten = np.reshape(shift, (w * h))
+    flatten = np.reshape(img, (w * h))
     return flatten
 
 
 def main():
     # Load data
     (x_train, y_train), (_, _) = mnist.load_data()
-    data = []
+    train_data = []
     for i in range(3):
         xi = x_train[y_train == i]
-        data.append(xi[0])
+        train_data.append(xi[0])
+        train_data.append(xi[1])
+        train_data.append(xi[2])
+
+    train_data = [pre_processing(d) for d in train_data]
+
+    model = HebbianNetwork(layers=10, neurons=train_data[0].shape[0])
 
     # Pre processing
     print("Start to data pre processing...")
-    data = [pre_processing(d) for d in data]
-
-    # Create Hopfield Network Model
-    model = network.HopfieldNetwork()
-    model.train(data)
+    for data in train_data:
+        model.train(data)
 
     # Make test datalist
-    test = []
+    test_data = []
     for i in range(3):
         xi = x_train[y_train == i]
-        test.append(xi[1])
-    test = [pre_processing(d) for d in test]
+        test_data.append(xi[3])
+        test_data.append(xi[4])
+        test_data.append(xi[5])
 
-    predicted = model.predict(test, iterations=200, threshold=70, run_async=True)
+    test_data = [pre_processing(d) for d in test_data]
+
+    predicted_data = []
+
+    for data in test_data:
+        predicted = model.predict(data, iterations=20)
+        predicted_data.append(predicted)
+
     print("Show prediction results...")
-    plot(data, test, predicted, figsize=(5, 5))
-    print("Show network weights matrix...")
-    model.plot_weights()
+    plot(train_data, test_data, predicted_data, figsize=(50, 50))
+    # print("Show network weights matrix...")
+    # model.plot_weights()
 
 
 if __name__ == '__main__':

@@ -24,15 +24,11 @@ class HopfieldNetwork(object):
 
         # initialize weights
         weights = np.zeros((self.neuron_count, self.neuron_count))
-        print('weights', weights)
         rho = np.sum([np.sum(t) for t in train_data]) / (num_data * self.neuron_count)
-        print('rho', rho)
 
         # Hebb rule
         for i in tqdm(range(num_data)):
             t = train_data[i] - rho
-            print('train_data[i]', train_data[i])
-            print('t', t)
             weights += np.outer(t, t)
 
         # Make diagonal element of W into 0
@@ -45,7 +41,7 @@ class HopfieldNetwork(object):
     def predict(self,
                 data: typing.List[np.ndarray],
                 iterations: int = 20,
-                threshold: int = 0,
+                threshold: int = 30,
                 run_async: bool = False) -> typing.List[np.ndarray]:
         print("Start to predict...")
         self.iterations = iterations
@@ -93,7 +89,8 @@ class HopfieldNetwork(object):
 
             # Iteration
             for i in range(self.iterations):
-                for j in range(100):
+                rand_count = int(self.neuron_count * 0.1)
+                for j in range(rand_count):
                     # Select random neuron
                     idx = np.random.randint(0, self.neuron_count)
                     # Update s

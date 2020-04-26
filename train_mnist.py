@@ -63,6 +63,7 @@ def main():
     for i in range(3):
         xi = x_train[y_train == i]
         data.append(xi[0])
+        # data.append(xi[1])
 
     # Pre processing
     print("Start to data pre processing...")
@@ -76,14 +77,15 @@ def main():
     test = []
     for i in range(3):
         xi = x_train[y_train == i]
-        test.append(xi[1])
+        test.append(xi[3])
+        # test.append(xi[4])
     test = [pre_processing(d) for d in test]
 
     predicted = model.predict(test, iterations=200, threshold=70, run_async=True)
     print("Show prediction results...")
-    plot(data, test, predicted, figsize=(5, 5))
+    plot(data, test, predicted, figsize=(50, 50))
     print("Show network weights matrix...")
-    model.plot_weights()
+    # model.plot_weights()
 
 
 if __name__ == '__main__':

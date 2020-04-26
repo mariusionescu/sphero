@@ -2,3 +2,8 @@ joblib
 numpy
 scikit-learn
 ipdb
+matplotlib
+tqdm
+tensorflow
+scikit-image
+structlog

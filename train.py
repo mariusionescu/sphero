@@ -56,7 +56,7 @@ def plot(data, test, predicted, figsize=(5, 6)):
     plt.show()
 
 
-def rotate_img(img, angle, bg_patch=(5,5)):
+def rotate_img(img, angle, bg_patch=(5, 5)):
     assert len(img.shape) <= 3, "Incorrect image shape"
     rgb = len(img.shape) == 3
     if rgb:
@@ -76,7 +76,9 @@ def pre_processing(img, w=128, h=128):
     # Threshold
     thresh = threshold_mean(img)
     binary = img > thresh
-    shift = 2 * (binary * 1) - 1  # Boolean to int
+
+    # Boolean to int
+    shift = 2 * (binary * 1) - 1
 
     # Reshape
     flatten = np.reshape(shift, (w * h))
@@ -92,7 +94,7 @@ def main():
 
     # Marge data
     data = [camera, astronaut, horse, coffee]
-    test_data = [rotate_img(d, 15) for d in data]
+    test_data = [rotate_img(d, 5) for d in data]
     test_data = [pre_processing(d) for d in test_data]
 
     # Pre-processing
@@ -106,7 +108,7 @@ def main():
     # Generate test set
     test = [get_corrupted_input(d, 0.0) for d in test_data]
 
-    predicted = model.predict(test, iterations=20, threshold=100, run_async=False)
+    predicted = model.predict(test, iterations=200, threshold=70, run_async=False)
     print("Show prediction results...")
     plot(data, test, predicted)
     print("Show network weights matrix...")
