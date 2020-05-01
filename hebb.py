@@ -82,7 +82,7 @@ class HebbianNetwork(object):
 
     def plot_weights(self):
         plt.figure(figsize=(6, 5))
-        w_mat = plt.imshow(self.weights[0], cmap=cm.coolwarm)
+        w_mat = plt.imshow(self.weights[0])
         plt.colorbar(w_mat)
         plt.title("Network Weights")
         plt.tight_layout()
