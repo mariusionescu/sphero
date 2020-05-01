@@ -12,7 +12,7 @@ from skimage.transform import resize
 
 from hebb import HebbianNetwork
 
-PLOT_WEIGHTS = True
+PLOT_WEIGHTS = False
 
 
 def reshape(data):
@@ -42,7 +42,7 @@ def plot(data, test, predicted, fig_size=(3, 3), save=False):
 
     plt.tight_layout()
     if save:
-        plt.savefig("plot_output.png")
+        plt.savefig("predictions.png")
     plt.show()
 
 
@@ -72,7 +72,8 @@ def main():
     # Pre processing
     print("Start to data pre processing...")
     for data in train_data:
-        model.train(data)
+        for i in range(100):
+            model.train(data)
 
     # Make test datalist
     test_data = []
@@ -87,7 +88,7 @@ def main():
     predicted_data = []
 
     for data in test_data:
-        predicted = model.predict(data, iterations=20)
+        predicted = model.predict(data)
         predicted_data.append(predicted)
 
     print("Show prediction results...")
