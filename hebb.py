@@ -21,7 +21,7 @@ class HebbianNetwork(object):
     def __init__(
             self, layers: int,
             neurons: int,
-            learning_rate: float = 0.00001,
+            learning_rate: float = 0.001,
             activation_threshold: float = 0.9
     ):
         self.layers = layers
@@ -29,7 +29,7 @@ class HebbianNetwork(object):
         self.weights = []
         self.connections = []
         self.activation_threshold = activation_threshold
-        self.connection_ratio = 0.05
+        self.connection_ratio = 0.01
         self.learning_rate = learning_rate
 
         for i in range(self.layers):
@@ -53,13 +53,13 @@ class HebbianNetwork(object):
 
         aggregated_signals /= self.neurons
 
+        # Add bias
+        bias_array = np.random.randint(8, 10, size=self.neurons) * 0.1
+        aggregated_signals = aggregated_signals * bias_array
+
         for idx, weights in enumerate(self.weights):
 
             connections = self.connections[idx]
-
-            # Add bias
-            bias_array = np.random.randint(8, 10, size=self.neurons) * 0.1
-            aggregated_signals = aggregated_signals * bias_array
 
             # print('aggregated_signals', aggregated_signals)
 
@@ -75,6 +75,8 @@ class HebbianNetwork(object):
             aggregated_signals[aggregated_signals < self.activation_threshold] = 0.0
             aggregated_signals[aggregated_signals > 0.0] = self.learning_rate
 
+            # print('aggregated_signals', aggregated_signals)
+
             self.weights[idx] = propagated_signals
 
     def predict(self, data: np.ndarray) -> np.ndarray:
@@ -85,7 +87,7 @@ class HebbianNetwork(object):
 
         for idx, weights in enumerate(self.weights):
 
-            print('weights', weights)
+            # print('weights', weights)
             connections = self.connections[idx]
 
             # Calculate propagated signals
@@ -104,7 +106,7 @@ class HebbianNetwork(object):
             aggregated_signals[aggregated_signals > 1.0] = 1.0
 
         output = np.copy(aggregated_signals)
-        print(output)
+        # print(output)
         return output
 
     def plot_weights(self, layer: int = -1, save: bool = False):
