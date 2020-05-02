@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 from sklearn.preprocessing import minmax_scale
 import typing
+import ipdb
 
 
 def connectivity_matrix(a):
@@ -20,15 +21,15 @@ class HebbianNetwork(object):
     def __init__(
             self, layers: int,
             neurons: int,
-            learning_rate: float = 0.01,
-            activation_threshold: float = 0.5
+            learning_rate: float = 0.00001,
+            activation_threshold: float = 0.9
     ):
         self.layers = layers
         self.neurons = neurons
         self.weights = []
         self.connections = []
         self.activation_threshold = activation_threshold
-        self.connection_ratio = 0.7
+        self.connection_ratio = 0.05
         self.learning_rate = learning_rate
 
         for i in range(self.layers):
@@ -48,55 +49,67 @@ class HebbianNetwork(object):
     def train(self, data: np.array) -> None:
 
         input_data = np.copy(data)
-        signals = minmax_scale(input_data)
+        aggregated_signals = minmax_scale(input_data)
+
+        aggregated_signals /= self.neurons
 
         for idx, weights in enumerate(self.weights):
 
             connections = self.connections[idx]
 
+            # Add bias
+            bias_array = np.random.randint(8, 10, size=self.neurons) * 0.1
+            aggregated_signals = aggregated_signals * bias_array
+
+            # print('aggregated_signals', aggregated_signals)
+
             # Calculate propagated signals
-            w = np.add(weights, signals, where=connections)
-            w[w > 1] = 1
+            propagated_signals = np.add(weights, aggregated_signals, where=connections)
+            propagated_signals[np.isnan(propagated_signals)] = 0
+            propagated_signals[propagated_signals > 1] = 1
 
             # Calculate aggregated signals
-            signals = np.sum(w, axis=1)
+            aggregated_signals = np.sum(propagated_signals, axis=0)
 
             # Apply activations and limits
-            signals[signals < self.activation_threshold] = 0
-            signals[signals > 1] = 1
+            aggregated_signals[aggregated_signals < self.activation_threshold] = 0.0
+            aggregated_signals[aggregated_signals > 0.0] = self.learning_rate
 
-            print('max energy', w)
-            self.weights[idx] = w
+            self.weights[idx] = propagated_signals
 
     def predict(self, data: np.ndarray) -> np.ndarray:
 
         # Copy to avoid call by reference
         input_data = np.copy(data)
-        signals = minmax_scale(input_data)
+        aggregated_signals = minmax_scale(input_data)
 
         for idx, weights in enumerate(self.weights):
 
+            print('weights', weights)
             connections = self.connections[idx]
 
             # Calculate propagated signals
-            w = np.add(weights, signals, where=connections)
-            w[w > 1] = 1
+            propagated_signals = np.add(weights, aggregated_signals, where=connections)
+            propagated_signals[np.isnan(propagated_signals)] = 0
+            propagated_signals[propagated_signals > 1.0] = 1.0
+
+            # print('propagated_signals', propagated_signals)
 
             # Calculate aggregated signals
-            signals = np.sum(w, axis=1)
+            aggregated_signals = np.sum(propagated_signals, axis=0)
+            # print('aggregated_signals', aggregated_signals)
 
             # Apply activations and limits
-            signals[signals < self.activation_threshold] = 0
-            signals[signals > 1] = 1
+            aggregated_signals[aggregated_signals < self.activation_threshold] = 0.0
+            aggregated_signals[aggregated_signals > 1.0] = 1.0
 
-            print(signals)
-
-        output = np.copy(signals)
+        output = np.copy(aggregated_signals)
+        print(output)
         return output
 
-    def plot_weights(self, save: bool = False):
+    def plot_weights(self, layer: int = -1, save: bool = False):
         plt.figure(figsize=(6, 5))
-        w_mat = plt.imshow(self.weights[0])
+        w_mat = plt.imshow(self.weights[layer])
         plt.colorbar(w_mat)
         plt.title("Network Weights")
         plt.tight_layout()

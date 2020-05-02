@@ -12,7 +12,7 @@ from skimage.transform import resize
 
 from hebb import HebbianNetwork
 
-PLOT_WEIGHTS = False
+PLOT_WEIGHTS = True
 
 
 def reshape(data):
@@ -67,12 +67,12 @@ def main():
 
     train_data = [pre_processing(d) for d in train_data]
 
-    model = HebbianNetwork(layers=10, neurons=train_data[0].shape[0])
+    model = HebbianNetwork(layers=5, neurons=train_data[0].shape[0])
 
     # Pre processing
     print("Start to data pre processing...")
     for data in train_data:
-        for i in range(100):
+        for i in range(50):
             model.train(data)
 
     # Make test datalist
@@ -95,7 +95,8 @@ def main():
     plot(train_data, test_data, predicted_data, fig_size=(50, 50))
     if PLOT_WEIGHTS:
         print("Show network weights matrix...")
-        model.plot_weights()
+        for layer in range(model.layers):
+            model.plot_weights(layer=layer)
 
 
 if __name__ == '__main__':
