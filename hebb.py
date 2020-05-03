@@ -80,7 +80,7 @@ class HebbianNetwork(object):
             if aggregated_signals is None:
                 aggregated_signals = input_signals
 
-            log.info('train', layer=layer)
+            log.info('train.layer', layer=layer)
 
             bias_array = np.random.randint(8, 10, size=self.neurons) * self.decay_rate
             bias_array = np.array(bias_array, np.float16)
@@ -108,6 +108,7 @@ class HebbianNetwork(object):
             # Apply activations and limits
             aggregated_signals[aggregated_signals < self.activation_threshold] = 0.0
 
+            log.info('weights', array=new_weights)
             self.weights[layer] = new_weights
 
     def predict(self, data: np.ndarray) -> np.ndarray:
@@ -120,6 +121,8 @@ class HebbianNetwork(object):
 
         for layer, weights in enumerate(self.weights):
 
+            log.info('prediction.layer', layer=layer)
+
             if aggregated_signals is None:
                 aggregated_signals = input_signals
 
@@ -131,6 +134,7 @@ class HebbianNetwork(object):
 
             # Calculate propagated signals
             propagated_signals = np.multiply(weights, aggregated_signals, where=connections)
+            log.info('prediction.weights', array=weights)
             self.normalize(propagated_signals)
 
             # Calculate aggregated signals
@@ -139,17 +143,30 @@ class HebbianNetwork(object):
             # Apply activations and limits
             aggregated_signals[aggregated_signals < self.activation_threshold] = 0.0
 
+            log.info('prediction.signal', array=aggregated_signals, layer=layer)
+
         output = np.copy(aggregated_signals)
         self.normalize(output)
         return output
 
-    def plot_weights(self, layer: int = -1, save: bool = False):
-        plt.figure(figsize=(6, 5))
-        w_mat = plt.imshow(self.weights[layer])
-        plt.clim(0, 1)
-        plt.colorbar(w_mat)
-        plt.title("Network Weights")
+    def plot(self, save: bool = False):
+
+        fig, ax_arr = plt.subplots(len(self.weights), 1, figsize=(10, 10))
+
+        if len(self.weights) == 1:
+            ax_arr.set_title('Layer 1')
+
+            ax_arr.imshow(self.weights[0])
+            ax_arr.axis('off')
+        else:
+            for i in range(len(self.weights)):
+                log.info('plot.data', i=i)
+
+                ax_arr[i].set_title('Layer {}'.format(i))
+
+                ax_arr[i].imshow(self.weights[i])
+                # ax_arr[i, 0].axis('off')
         plt.tight_layout()
         if save:
-            plt.savefig("weights.png")
+            plt.savefig("predictions.png")
         plt.show()
