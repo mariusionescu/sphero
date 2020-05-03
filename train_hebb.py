@@ -1,16 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jul 29 08:40:49 2018
-
-@author: user
-"""
-
 import numpy as np
 from tensorflow.keras.datasets import mnist
 from matplotlib import pyplot as plt
 from skimage.transform import resize
-
+import settings
 from hebb import HebbianNetwork
+
+log = settings.get_logger()
 
 PLOT_WEIGHTS = True
 
@@ -46,7 +41,7 @@ def plot(data, test, predicted, fig_size=(3, 3), save=False):
     plt.show()
 
 
-def pre_processing(img):
+def img_processing(img):
     img = resize(img, (20, 20))
     w, h = img.shape
 
@@ -55,8 +50,32 @@ def pre_processing(img):
     return flatten
 
 
-def main():
+def array_processing(array):
+    w, h = array.shape
+    flatten = np.reshape(array, (w * h))
+    return flatten
 
+
+def create_array_data():
+    train_data = [
+        np.array([[0.2, 0.3], [0.1, 0.0]]),
+        np.array([[0.1, 0.5], [0.2, 0.3]]),
+        np.array([[0.7, 0.3], [0.1, 0.8]])
+    ]
+
+    train_data = [array_processing(d) for d in train_data]
+    test_data = [
+        np.array([[0.2, 0.3], [0.1, 0.0]]),
+        np.array([[0.8, 0.1], [0.3, 0.7]]),
+        np.array([[0.4, 0.0], [0.4, 0.3]])
+    ]
+
+    test_data = [array_processing(d) for d in test_data]
+
+    return train_data, test_data
+
+
+def create_img_data():
     (x_train, y_train), (_, _) = mnist.load_data()
     train_data = []
     for i in range(3):
@@ -64,37 +83,39 @@ def main():
         train_data.append(xi[0])
         train_data.append(xi[1])
         train_data.append(xi[2])
-
-    train_data = [pre_processing(d) for d in train_data]
-
-    model = HebbianNetwork(layers=5, neurons=train_data[0].shape[0])
-
-    # Pre processing
-    print("Start to data pre processing...")
-    for data in train_data:
-        for i in range(50):
-            model.train(data)
-
-    # Make test datalist
+    train_data = [img_processing(d) for d in train_data]
     test_data = []
     for i in range(3):
         xi = x_train[y_train == i]
         test_data.append(xi[3])
         test_data.append(xi[4])
         test_data.append(xi[5])
+    test_data = [img_processing(d) for d in test_data]
+    return train_data, test_data
 
-    test_data = [pre_processing(d) for d in test_data]
+
+def main():
+
+    train_data, test_data = create_img_data()
+
+    model = HebbianNetwork(layers=5, neurons=train_data[0].shape[0])
+
+    log.info('training')
+    for data in train_data:
+        for i in range(50):
+            model.train(data)
 
     predicted_data = []
 
+    log.info('prediction')
     for data in test_data:
         predicted = model.predict(data)
         predicted_data.append(predicted)
 
-    print("Show prediction results...")
+    log.info('plot.prediction')
     plot(train_data, test_data, predicted_data, fig_size=(50, 50))
     if PLOT_WEIGHTS:
-        print("Show network weights matrix...")
+        log.info('plot.weights')
         for layer in range(model.layers):
             model.plot_weights(layer=layer)
 
