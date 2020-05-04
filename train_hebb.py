@@ -92,14 +92,14 @@ def create_array_data(count: int):
 def create_img_data(count: int):
     (x_train, y_train), (_, _) = mnist.load_data()
     train_data = []
-    for i in range(3):
+    for i in range(5):
         xi = x_train[y_train == i]
         train_data.append(xi[0])
         train_data.append(xi[1])
         train_data.append(xi[2])
     train_data = [img_processing(d) for d in train_data]
     test_data = []
-    for i in range(3):
+    for i in range(5):
         xi = x_train[y_train == i]
         test_data.append(xi[3])
         test_data.append(xi[4])
@@ -116,7 +116,7 @@ def main():
 
     log.info('training')
     for data in train_data:
-        for i in range(40):
+        for i in range(5):
             model.train(data)
 
     predicted_data = []
