@@ -26,7 +26,7 @@ class HebbianNetwork(object):
     def __init__(
             self, layers: int,
             neurons: int,
-            learning_rate: float = 0.001,
+            learning_rate: float = 0.1,
             decay_rate: float = 0.1,
             activation_threshold: float = 0.5
     ):
@@ -59,10 +59,7 @@ class HebbianNetwork(object):
             self.connections.append(connections)
 
             weights = np.random.uniform(0.001, 0.002, (self.neurons, self.neurons))
-            print('weights_0', weights)
-            print('connections_0', connections)
             weights = np.multiply(weights, 0, where=~connections, dtype=np.float32)
-            print('weights_1', weights)
             self.weights.append(weights)
 
         log.info('layers.init', layers=self.layers)
@@ -79,40 +76,45 @@ class HebbianNetwork(object):
 
         # Calculate rates
         rates = np.zeros((self.neurons, self.neurons))
-        rates = np.add(rates, 1.0, where=connections)
-        rates[rates < 1] = 0
-        rates = np.multiply(rates, input_array, where=connections)
-        print('RATES', rates)
-        # rates[rates < self.activation_threshold] = 0
+        rates = np.add(rates, 1, where=connections, dtype=np.float32)
+        # rates[rates < 1] = 0
+        # print('RATES_0', rates)
+        # print('INPUT', input_array)
+        rates = np.multiply(rates, input_array, where=connections, dtype=np.float32)
+        # print('RATES_1', rates)
+        rates[rates < self.activation_threshold] = 0
         rates = rates * self.learning_rate
 
         # Calculates new weights
         new_weights = np.add(weights, rates, where=connections)
         self.normalize(new_weights)
         self.weights[layer] = new_weights
+        print('new_weights', new_weights)
 
     def propagate(self, input_array, layer):
 
         weights = self.weights[layer]
         connections = self.connections[layer]
 
+        # print('propagate_last_output_array_0', input_array)
         # Add bias and normalize input
         bias_array = np.random.randint(8, 10, size=self.neurons) * self.decay_rate
         input_array = input_array * bias_array
+        # print('propagate_last_output_array_1', input_array)
         self.normalize(input_array)
+        # print('propagate_last_output_array_2', input_array)
 
         # Calculate propagated signals
-        #print(weights, input_array)
-        propagated_signals = np.multiply(weights, input_array, where=connections)
+        # propagated_signals = np.multiply(weights, input_array, where=connections, dtype=np.float32)
+        # print('propagated_signals', propagated_signals)
+        # output_array = np.average(propagated_signals, axis=1)
         output_array = np.dot(weights, input_array)
-        self.normalize(propagated_signals)
+        self.normalize(output_array)
 
         # Calculate aggregated signals
-        # output_array = np.average(propagated_signals, axis=0)
-        #print(propagated_signals)
 
         # Apply activations and limits
-        output_array[output_array < self.activation_threshold] = 0.0
+        # output_array[output_array < self.activation_threshold] = 0.0
 
         self.normalize(output_array)
         return output_array
@@ -123,12 +125,14 @@ class HebbianNetwork(object):
         input_array = minmax_scale(input_array)
         last_output_array = None
 
+        print('input_array', input_array)
         for layer in range(self.layers):
             if last_output_array is None:
                 last_output_array = input_array
 
+            print('last_output_array', layer, last_output_array)
             last_output_array = self.propagate(last_output_array, layer)
-            # self.update_weights(last_output_array, layer)
+            self.update_weights(last_output_array, layer)
 
     def predict(self, data: np.ndarray) -> np.ndarray:
 

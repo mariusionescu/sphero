@@ -116,7 +116,7 @@ def main():
 
     log.info('training')
     for data in train_data:
-        for i in range(5):
+        for i in range(10):
             model.train(data)
 
     predicted_data = []
